@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Management System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .task-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"],
+        select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex: 1;
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .task-list {
+            list-style: none;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: #f9f9f9;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            gap: 10px;
+        }
+
+        .task-item.completed {
+            background-color: #e8f5e9;
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        .task-item button {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        .task-item button.delete {
+            background-color: #f44336;
+        }
+
+        .task-item button.delete:hover {
+            background-color: #da190b;
+        }
+
+        .task-content {
+            flex: 1;
+        }
+
+        .priority-high {
+            border-left: 4px solid #f44336;
+        }
+
+        .priority-medium {
+            border-left: 4px solid #fb8c00;
+        }
+
+        .priority-low {
+            border-left: 4px solid #4caf50;
+        }
+
+        .due-date {
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Task Management System</h1>
+        
+        <form class="task-form" id="taskForm">
+            <input type="text" id="taskInput" placeholder="Enter task description" required>
+            <select id="prioritySelect">
+                <option value="low">Low Priority</option>
+                <option value="medium">Medium Priority</option>
+                <option value="high">High Priority</option>
+            </select>
+            <input type="date" id="dueDateInput">
+            <button type="submit">Add Task</button>
+        </form>
+
+        <div class="filters">
+            <select id="filterPriority">
+                <option value="all">All Priorities</option>
+                <option value="high">High Priority</option>
+                <option value="medium">Medium Priority</option>
+                <option value="low">Low Priority</option>
+            </select>
+            <select id="filterStatus">
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+            </select>
+        </div>
+
+        <ul class="task-list" id="taskList"></ul>
+    </div>
+
+    <script>
+        class TaskManager {
+            constructor() {
+                this.tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+                this.taskForm = document.getElementById('taskForm');
+                this.taskInput = document.getElementById('taskInput');
+                this.prioritySelect = document.getElementById('prioritySelect');
+                this.dueDateInput = document.getElementById('dueDateInput');
+                this.taskList = document.getElementById('taskList');
+                this.filterPriority = document.getElementById('filterPriority');
+                this.filterStatus = document.getElementById('filterStatus');
+
+                this.initializeEventListeners();
+                this.renderTasks();
+            }
+
+            initializeEventListeners() {
+                this.taskForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.addTask();
+                });
+
+                this.filterPriority.addEventListener('change', () => this.renderTasks());
+                this.filterStatus.addEventListener('change', () => this.renderTasks());
+            }
+
+            addTask() {
+                const task = {
+                    id: Date.now(),
+                    description: this.taskInput.value,
+                    priority: this.prioritySelect.value,
+                    dueDate: this.dueDateInput.value,
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                };
+
+                this.tasks.push(task);
+                this.saveTasks();
+                this.renderTasks();
+                this.taskForm.reset();
+            }
+
+            toggleTaskStatus(taskId) {
+                const task = this.tasks.find(t => t.id === taskId);
+                if (task) {
+                    task.completed = !task.completed;
+                    this.saveTasks();
+                    this.renderTasks();
+                }
+            }
+
+            deleteTask(taskId) {
+                this.tasks = this.tasks.filter(task => task.id !== taskId);
+                this.saveTasks();
+                this.renderTasks();
+            }
+
+            saveTasks() {
+                localStorage.setItem('tasks', JSON.stringify(this.tasks));
+            }
+
+            getFilteredTasks() {
+                return this.tasks.filter(task => {
+                    const priorityMatch = this.filterPriority.value === 'all' || 
+                                       task.priority === this.filterPriority.value;
+                    const statusMatch = this.filterStatus.value === 'all' || 
+                                      (this.filterStatus.value === 'completed' && task.completed) ||
+                                      (this.filterStatus.value === 'active' && !task.completed);
+                    return priorityMatch && statusMatch;
+                });
+            }
+
+            renderTasks() {
+                const filteredTasks = this.getFilteredTasks();
+                this.taskList.innerHTML = '';
+
+                filteredTasks.forEach(task => {
+                    const li = document.createElement('li');
+                    li.className = `task-item priority-${task.priority} ${task.completed ? 'completed' : ''}`;
+                    
+                    const dueDate = task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date';
+                    
+                    li.innerHTML = `
+                        <input type="checkbox" ${task.completed ? 'checked' : ''}>
+                        <div class="task-content">
+                            <div>${task.description}</div>
+                            <div class="due-date">Due: ${dueDate}</div>
+                        </div>
+                        <button class="delete">Delete</button>
+                    `;
+
+                    const checkbox = li.querySelector('input[type="checkbox"]');
+                    checkbox.addEventListener('change', () => this.toggleTaskStatus(task.id));
+
+                    const deleteButton = li.querySelector('.delete');
+                    deleteButton.addEventListener('click', () => this.deleteTask(task.id));
+
+                    this.taskList.appendChild(li);
+                });
+            }
+        }
+
+        // Initialize the Task Manager
+        const taskManager = new TaskManager();
+    </script>
+</body>
+</html>
